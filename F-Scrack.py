@@ -3,10 +3,10 @@
 
 import getopt
 import sys
-import Queue
+import queue
 import threading
 import socket
-import urllib2
+import urllib.request, urllib.error, urllib.parse
 import time
 import os
 import re
@@ -17,7 +17,7 @@ import binascii
 import telnetlib
 import array
 
-queue = Queue.Queue()
+queue = queue.Queue()
 mutex = threading.Lock()
 TIMEOUT = 10
 I = 0
@@ -56,7 +56,7 @@ class Crack():
             ftp.login(user,pass_)
             if user == 'ftp':return "anonymous"
             return "username:%s,password:%s"%(user,pass_)
-        except Exception,e:
+        except Exception as e:
             pass
     def mysql(self,user,pass_):
         sock = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
@@ -94,7 +94,7 @@ class Crack():
             packet1 = sock.recv(1024)
             if packet1[0] == "R":
                 return "username:%s,password:%s" % (user,pass_)
-        except Exception,e:
+        except Exception as e:
             return 3
     def redis(self,user,pass_):
         try:
@@ -112,7 +112,7 @@ class Crack():
                     result = s.recv(1024)
                     if '+OK' in result:
                         return "username:%s,password:%s" % (user,pass_)
-        except Exception,e:
+        except Exception as e:
             return 3
     def mssql(self,user,pass_):#author:hos@YSRC
         try:
@@ -163,7 +163,7 @@ class Crack():
                 if "totalLinesWritten" in result:
                     return "unauthorized"
                 else:return 3
-        except Exception,e:
+        except Exception as e:
             return 3
     def memcached(self,user,pass_):
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -174,7 +174,7 @@ class Crack():
             return "unauthorized"
     def elasticsearch(self,user,pass_):
         url = "http://"+self.ip+":"+str(self.port)+"/_cat"
-        data = urllib2.urlopen(url).read()
+        data = urllib.request.urlopen(url).read()
         if '/_cat/master' in data:
             return "unauthorized"
         else:
@@ -185,7 +185,7 @@ class Crack():
             #tn.set_debuglevel(3)
             time.sleep(0.5)
             os = tn.read_some()
-        except Exception ,e:
+        except Exception as e:
             return 3
         user_match="(?i)(login|user|username)"
         pass_match='(?i)(password|pass)'
@@ -199,12 +199,12 @@ class Crack():
                 tn.close()
                 if re.search(login_match,login_info):
                     return "username:%s,password:%s" % (user,pass_)
-            except Exception,e:
+            except Exception as e:
                 pass
         else:
             try:
                 info=tn.read_until(user_match,timeout=2)
-            except Exception,e:
+            except Exception as e:
                 return 3
             if re.search(user_match,info):
                 try:
@@ -215,7 +215,7 @@ class Crack():
                     tn.close()
                     if re.search(login_match,login_info):
                         return "username:%s,password:%s" % (user,pass_)
-                except Exception,e:
+                except Exception as e:
                     return 3
             elif re.search(pass_match,info):
                 tn.read_until(pass_match,timeout=2)
@@ -328,8 +328,8 @@ def get_ac_ip(ip_list):
         s = Nscan()
         ipPool = set(ip_list)
         return s.mPing(ipPool)
-    except Exception,e:
-        print 'The current user permissions unable to send icmp packets'
+    except Exception as e:
+        print('The current user permissions unable to send icmp packets')
         return ip_list
 class ThreadNum(threading.Thread):
     def __init__(self,queue):
@@ -354,14 +354,14 @@ class ThreadNum(threading.Thread):
                 else:
                     result = pass_crack(task_type,task_host,task_port)
                     if result and result !=3:log(task_type,task_host,task_port,result)
-            except Exception,e:
+            except Exception as e:
                 continue
 def scan_port(host,port):
     try:
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.connect((str(host),int(port)))
         log('portscan',host,port)
-    except Exception,e:
+    except Exception as e:
         return False
     try:
         data = sock.recv(512)
@@ -375,21 +375,21 @@ def scan_port(host,port):
                 return data
             else:
                 return 'NULL'
-    except Exception,e:
+    except Exception as e:
         sock.close()
         return 'NULL'
 def log(scan_type,host,port,info=''):
     mutex.acquire()
     time_str = time.strftime('%X', time.localtime( time.time()))
     if scan_type == 'portscan':
-        print "[%s] %s:%d open"%(time_str,host,int(port))
+        print("[%s] %s:%d open"%(time_str,host,int(port)))
     elif scan_type == 'discern':
-        print "[%s] %s:%d is %s"%(time_str,host,int(port),info)
+        print("[%s] %s:%d is %s"%(time_str,host,int(port),info))
     elif scan_type == 'active':
-        print "[%s] %s active" % (time_str, host)
+        print("[%s] %s active" % (time_str, host))
     elif info:
         log =  "[*%s] %s:%d %s %s"%(time_str,host,int(port),scan_type,info)
-        print log
+        print(log)
         log_file = open('result.log','a')
         log_file.write(log+"\r\n")
         log_file.close()
@@ -398,13 +398,13 @@ def server_discern(host,port,data):
     for mark_info in REGEX:
         try:
             name,default_port,reg = mark_info
-            if reg and data <> 'NULL':
+            if reg and data != 'NULL':
                 matchObj = re.search(reg,data,re.I|re.M)
                 if matchObj:
                     return name
             elif int(default_port) == int(port):
                 return name
-        except Exception,e:
+        except Exception as e:
             #print e
             continue
 def pass_crack(server_type,host,port):
@@ -426,14 +426,14 @@ def get_ip_list(ip):
     numtoip = lambda x: '.'.join([str(x/(256**i)%256) for i in range(3,-1,-1)])
     if '-' in ip:
         ip_range = ip.split('-')
-        ip_start = long(iptonum(ip_range[0]))
-        ip_end = long(iptonum(ip_range[1]))
+        ip_start = int(iptonum(ip_range[0]))
+        ip_end = int(iptonum(ip_range[1]))
         ip_count = ip_end - ip_start
         if ip_count >= 0 and ip_count <= 65536:
             for ip_num in range(ip_start,ip_end+1):
                 ip_list.append(numtoip(ip_num))
         else:
-            print '-h wrong format'
+            print('-h wrong format')
     elif '.ini' in ip:
         ip_config = open(ip,'r')
         for ip in ip_config:
@@ -454,7 +454,7 @@ def get_ip_list(ip):
         elif net ==4:
             ip_list.append(ip)
         else:
-            print "-h wrong format"
+            print("-h wrong format")
     return ip_list
 def t_join(m_count):
     tmp_count = 0
@@ -484,7 +484,7 @@ if __name__=="__main__":
 Usage: python F-Scrack.py -h 192.168.1 [-p 21,80,3306] [-m 50] [-t 10] [-d pass.txt] [-n]
     '''
     if len(sys.argv) < 2:
-        print msg
+        print(msg)
     try:
         options,args = getopt.getopt(sys.argv[1:],"h:p:m:t:d:n")
         ip = ''
@@ -518,5 +518,5 @@ Usage: python F-Scrack.py -h 192.168.1 [-p 21,80,3306] [-m 50] [-t 10] [-d pass.
                 t.setDaemon(True)
                 t.start()
             t_join(m_count)
-    except Exception,e:
-          print msg
+    except Exception as e:
+          print(msg)
